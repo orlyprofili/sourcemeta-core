@@ -89,6 +89,7 @@ auto flush(const std::filesystem::path &path) -> void {
 
   // After syncing a file, we should also sync the directory to ensure
   // durability
+#ifdef O_DIRECTORY
   auto directory_fd =
       ::open(path.parent_path().c_str(), O_DIRECTORY | O_RDONLY);
   if (directory_fd != -1) {
@@ -101,6 +102,7 @@ auto flush(const std::filesystem::path &path) -> void {
 
     ::close(directory_fd);
   }
+#endif
 #endif
 }
 

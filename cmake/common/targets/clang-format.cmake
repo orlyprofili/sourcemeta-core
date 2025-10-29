@@ -80,6 +80,10 @@ function(sourcemeta_target_clang_format)
   cmake_parse_arguments(SOURCEMETA_TARGET_CLANG_FORMAT "REQUIRED" "" "SOURCES" ${ARGN})
   sourcemeta_target_clang_format_attempt_install(OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
+  if(TARGET clang_format OR TARGET clang_format_test)
+    return()
+  endif()
+
   if(SOURCEMETA_TARGET_CLANG_FORMAT_REQUIRED)
     find_program(CLANG_FORMAT_BIN NAMES clang-format NO_DEFAULT_PATH
       PATHS "${CMAKE_CURRENT_BINARY_DIR}/bin")
