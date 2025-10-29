@@ -10,6 +10,7 @@
 #include <cstdint>   // std::uint64_t
 #include <istream>   // std::basic_istream
 #include <sstream>   // std::basic_stringstream
+#include <limits>    // std::numeric_limits
 #include <stdexcept> // std::out_of_range
 #include <string>    // std::stoi
 
@@ -26,14 +27,18 @@ reset(std::basic_stringstream<CharT, Traits, Allocator<CharT>> &stream)
 template <typename CharT, typename Traits,
           template <typename T> typename Allocator>
 inline auto
-parse_index(std::basic_stringstream<CharT, Traits, Allocator<CharT>> &stream,
-            const std::uint64_t column) -> decltype(auto) {
-  try {
-    return std::stoul(stream.str());
-  } catch (const std::out_of_range &) {
-    throw PointerParseError(column);
+  parse_index(std::basic_stringstream<CharT, Traits, Allocator<CharT>> &stream,
+              const std::uint64_t column) -> unsigned int {
+    try {
+      const auto converted = std::stoul(stream.str());
+      if (converted > static_cast<unsigned long>(std::numeric_limits<unsigned int>::max())) {
+        throw PointerParseError(column);
+      }
+      return static_cast<unsigned int>(converted);
+    } catch (const std::out_of_range &) {
+      throw PointerParseError(column);
+    }
   }
-}
 
 } // namespace sourcemeta::core::internal
 
