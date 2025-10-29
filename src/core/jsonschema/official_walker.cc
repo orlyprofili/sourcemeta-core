@@ -2,6 +2,91 @@
 
 #include <initializer_list> // std::initializer_list
 
+#if defined(BLAZE_MINIMAL_EMBEDDED_WALKER)
+
+#include <array>    // std::array
+#include <string>   // std::string
+#include <utility>  // std::pair
+
+namespace {
+          struct KeywordEntry
+          {
+                    std::string_view keyword;
+                    std::string_view vocabulary;
+                    sourcemeta::core::SchemaKeywordType type;
+                    std::initializer_list<std::string_view> dependencies;
+                    std::initializer_list<sourcemeta::core::JSON::Type> instances;
+          };
+
+          constexpr std::string_view kVocabularyCore = "https://json-schema.org/draft/2020-12/vocab/core";
+          constexpr std::string_view kVocabularyApplicator = "https://json-schema.org/draft/2020-12/vocab/applicator";
+          constexpr std::string_view kVocabularyValidation = "https://json-schema.org/draft/2020-12/vocab/validation";
+
+          constexpr std::array<KeywordEntry, 23> kKeywordTable{ {
+                    {"$id", kVocabularyCore, sourcemeta::core::SchemaKeywordType::Other, {}, {}},
+                    {"$schema", kVocabularyCore, sourcemeta::core::SchemaKeywordType::Other, {}, {}},
+                    {"$ref", kVocabularyCore, sourcemeta::core::SchemaKeywordType::Reference, {}, {}},
+                    {"$defs", kVocabularyCore, sourcemeta::core::SchemaKeywordType::LocationMembers, {}, {}},
+                    {"type", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {"properties"}, {}},
+                    {"enum", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {}},
+                    {"const", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {}},
+                    {"properties", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorMembersTraversePropertyStatic, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"patternProperties", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorMembersTraversePropertyRegex, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"additionalProperties", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorValueTraverseSomeProperty, {"properties", "patternProperties"}, {sourcemeta::core::JSON::Type::Object}},
+                    {"propertyNames", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorValueTraverseAnyPropertyKey, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"required", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"minProperties", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"maxProperties", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::Object}},
+                    {"minLength", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::String}},
+                    {"maxLength", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::String}},
+                    {"pattern", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::String}},
+                    {"minimum", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {"type"}, {sourcemeta::core::JSON::Type::Integer, sourcemeta::core::JSON::Type::Real}},
+                    {"maximum", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {"type"}, {sourcemeta::core::JSON::Type::Integer, sourcemeta::core::JSON::Type::Real}},
+                    {"items", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorValueTraverseSomeItem, {}, {sourcemeta::core::JSON::Type::Array}},
+                    {"minItems", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::Array}},
+                    {"maxItems", kVocabularyValidation, sourcemeta::core::SchemaKeywordType::Assertion, {}, {sourcemeta::core::JSON::Type::Array}},
+                    {"additionalItems", kVocabularyApplicator, sourcemeta::core::SchemaKeywordType::ApplicatorValueTraverseSomeItem, {"items"}, {sourcemeta::core::JSON::Type::Array}}
+          } };
+} // namespace
+
+auto sourcemeta::core::schema_official_walker(
+          std::string_view keyword,
+          const sourcemeta::core::Vocabularies &vocabularies)
+          -> sourcemeta::core::SchemaWalkerResult {
+     const auto matches_vocabulary =
+               [&vocabularies](std::string_view vocabulary) -> bool {
+          if (vocabulary.empty()) {
+               return true;
+          }
+
+          const auto found = vocabularies.find(std::string(vocabulary));
+          return found != vocabularies.end() && found->second;
+     };
+
+     for (const auto &entry : kKeywordTable) {
+          if (keyword != entry.keyword || !matches_vocabulary(entry.vocabulary)) {
+               continue;
+          }
+
+          sourcemeta::core::SchemaWalkerResult result;
+          result.type = entry.type;
+          if (!entry.vocabulary.empty()) {
+               result.vocabulary = std::string(entry.vocabulary);
+          }
+          for (const auto &dependency : entry.dependencies) {
+               result.dependencies.emplace(dependency);
+          }
+          for (const auto instance : entry.instances) {
+               result.instances.emplace(instance);
+          }
+          return result;
+     }
+
+     return {sourcemeta::core::SchemaKeywordType::Unknown, std::nullopt, {}, {}};
+}
+
+#else
+
 template <typename T>
 auto make_set(std::initializer_list<T> types) -> std::set<T> {
   return {types};
@@ -997,3 +1082,5 @@ auto sourcemeta::core::schema_official_walker(
           .dependencies = {},
           .instances = {}};
 }
+
+#endif // BLAZE_MINIMAL_EMBEDDED_WALKER
